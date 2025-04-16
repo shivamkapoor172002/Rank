@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Web Rank Tracker - Trends</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f7f9fc;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .back-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web SEO Trends</h1>
+        <a href="/" class="back-button">Back to Search</a>
+        <a href="/dashboard" class="back-button">View Dashboard</a>
+        
+        {% if error %}
+            <div class="card">
+                <p style="color: red;">{{ error }}</p>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="form-group">
+                    <label for="keywordSelect">Select Keyword:</label>
+                    <select id="keywordSelect" name="keyword">
+                        <option value="All">All Keywords</option>
+                        {% for keyword in keywords %}
+                            <option value="{{ keyword }}">{{ keyword }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <canvas id="rankingChart" width="600" height="300"></canvas>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#keywordSelect').select2({
+                placeholder: "Select or search a keyword",
+                allowClear: true
+            });
+    
+            let chart = null;
+    
+            function updateChart(keyword) {
+                fetch('/chart_data?keyword=' + encodeURIComponent(keyword))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (chart) {
+                            chart.destroy();
+                        }
+                        const ctx = document.getElementById('rankingChart').getContext('2d');
+                        if (data.error) {
+                            console.error('Chart data error:', data.error);
+                            document.getElementById('rankingChart').style.display = 'none';
+                            alert('Error loading chart data: ' + data.error);
+                            return;
+                        }
+                        if (data.labels.length === 0 || data.datasets.length === 0) {
+                            console.warn('No data to display');
+                            document.getElementById('rankingChart').style.display = 'none';
+                            alert('No ranking data available for this keyword.');
+                            return;
+                        }
+                        document.getElementById('rankingChart').style.display = 'block';
+                        chart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: data.labels,
+                                datasets: data.datasets
+                            },
+                            options: {
+                                responsive: true,
+                                scales: {
+                                    y: {
+                                        reverse: true,
+                                        beginAtZero: false,
+                                        title: {
+                                            display: true,
+                                            text: 'Google Rank'
+                                        }
+                                    },
+                                    x: {
+                                        title: {
+                                            display: true,
+                                            text: 'Date'
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        document.getElementById('rankingChart').style.display = 'none';
+                        alert('Error fetching chart data: ' + error.message);
+                    });
+            }
+    
+            $('#keywordSelect').on('change', function() {
+                const keyword = $(this).val();
+                if (keyword) {
+                    updateChart(keyword);
+                } else {
+                    document.getElementById('rankingChart').style.display = 'none';
+                }
+            });
+    
+            updateChart('All');
+        });
+    </script>
+</body>
+</html>
